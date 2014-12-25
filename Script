@@ -1,7 +1,7 @@
-//// Create a copy of a Keynote document with its content rotated by 90 degrees clockwise
+//// Create a copy of a Keynote document with its content rotated by 90 degrees counterclockwise
 ////
 //// useful when trying out on an actual device your app prototypes made with Keynote
-//// because Keynote for iOS is landscape only and will not display fullscren your document made in portrait
+//// because Keynote for iOS is landscape only and will not display fullscreen your document made in portrait
 //// 
 //// based on RotateKeynoteDocumentDroplet by ericallam, see https://gist.github.com/ericallam/a5cd76651c327b116a6e
 //// this script simply refines his work, so kudos to him!
@@ -19,7 +19,7 @@ function rotateDocument(original, rotated) {
 	
 	// rotate each slide
 	for (j in original.slides) {
-		rotateSlide(original.slides[j], rotated.slides[j], original.height())
+		rotateSlide(original.slides[j], rotated.slides[j], original.width())
 	}
 }
 
@@ -29,38 +29,38 @@ function rotateDocument(original, rotated) {
 //	 (because, when a doc's slide size is changed, Keynote unfortunately shrinks all content so that it fits)
 // - place the element to its expected position
  
-function rotateSlide(original, rotated, originalDocHeight) {
+function rotateSlide(original, rotated, originalDocWidth) {
 
-	function transformShape(originalShape, rotatedShape, originalDocHeight) {
+	function transformShape(originalShape, rotatedShape, originalDocWidth) {
 	// works for all shapes, but lines
 		
 		// turn shape
-		rotatedShape.rotation = originalShape.rotation() - 90 
+		rotatedShape.rotation = originalShape.rotation() + 90 
 		// scale its size back
 		rotatedShape.width = originalShape.width()
 		rotatedShape.height = originalShape.height()
 		
-		// change position according to transformation: (x,y) -> (H-y,x)
+		// change position according to transformation: (x,y) -> (y, W-x)
 		var position = originalShape.position()
 		// (this is the position of the upper left corner,
-		//  but, once rotated, it becomes the upper *right* corner,
-		//  thus the position must be shifted to the left by the new width, i.e. the old height,
-		//  hence the "- originalShape.height()" )
-		rotatedShape.position = $.NSMakePoint(originalDocHeight - position.y - originalShape.height(), position.x)
+		//  but, once rotated, it becomes the *lower* left corner,
+		//  thus the position must be shifted up by the new height, i.e. the old width,
+		//  hence the "- originalShape.width()" in the 2nd coord )
+		rotatedShape.position = $.NSMakePoint(position.y, originalDocWidth - position.x - originalShape.width())
 	}
 	
-	function transformLine(originalLine, rotatedLine, originalDocHeight) {
+	function transformLine(originalLine, rotatedLine, originalDocWidth) {
 	// special case: for a line, we cannot rely on width() and height() properties, or position() either
 	
 		// turn line
-		rotatedLine.rotation = originalLine.rotation() - 90 
+		rotatedLine.rotation = originalLine.rotation() + 90 
 	
 		var startPos = originalLine.startPoint()
 		var endPos = originalLine.endPoint()
 		
 		// scale and change coords to new system
-		rotatedLine.startPoint = $.NSMakePoint(originalDocHeight - startPos.y, startPos.x)
-		rotatedLine.endPoint = $.NSMakePoint(originalDocHeight - endPos.y, endPos.x)
+		rotatedLine.startPoint = $.NSMakePoint(startPos.y, originalDocWidth - startPos.x)
+		rotatedLine.endPoint = $.NSMakePoint(endPos.y, originalDocWidth - endPos.x)
 		
 		// missing: a line's width is also squeezed when changing the size of the slide containing it
 		//          but there is no way to get() or set() that width from Keynote's library
@@ -75,24 +75,24 @@ function rotateSlide(original, rotated, originalDocHeight) {
 	
 	for (i in original.shapes) {
 		changeTextSize(original.shapes[i], rotated.shapes[i]) // shapes have a textSize property, to be scaled back	
-		transformShape(original.shapes[i], rotated.shapes[i], originalDocHeight)	
+		transformShape(original.shapes[i], rotated.shapes[i], originalDocWidth)	
 	}
  
 	for (i in original.textItems) {
 		changeTextSize(original.textItems[i], rotated.textItems[i]) // texts have a textSize property, to be scaled back
-		transformShape(original.textItems[i], rotated.textItems[i], originalDocHeight)
+		transformShape(original.textItems[i], rotated.textItems[i], originalDocWidth)
 	}
   
 	for (i in original.images) {
-		transformShape(original.images[i], rotated.images[i], originalDocHeight)
+		transformShape(original.images[i], rotated.images[i], originalDocWidth)
 	}
 	
 	for (i in original.groups) {
-		transformShape(original.groups[i], rotated.groups[i], originalDocHeight)
+		transformShape(original.groups[i], rotated.groups[i], originalDocWidth)
 	}
 	
 	for (i in original.lines) {
-		transformLine(original.lines[i], rotated.lines[i], originalDocHeight)
+		transformLine(original.lines[i], rotated.lines[i], originalDocWidth)
 	}
 }
 
