@@ -1,0 +1,125 @@
+//// Create a copy of a Keynote document with its content rotated by 90 degrees clockwise
+////
+//// useful when trying out on an actual device your app prototypes made with Keynote
+//// because Keynote for iOS is landscape only and will not display fullscren your document made in portrait
+//// 
+//// based on RotateKeynoteDocumentDroplet by ericallam, see https://gist.github.com/ericallam/a5cd76651c327b116a6e
+//// this script simply refines his work, so kudos to him!
+////
+//// How to use:
+//// 1. Open Script Editor
+//// 2. Set your language to Java Script
+//// 3. Paste this code and export it as an Application
+//// 4. Drop your keynote doc on this application in the Finder
+ 
+function rotateDocument(original, rotated) {
+	// change slide size
+	rotated.height = original.width()
+	rotated.width = original.height()
+	
+	// rotate each slide
+	for (j in original.slides) {
+		rotateSlide(original.slides[j], rotated.slides[j], original.height())
+	}
+}
+
+// rotateSlide:
+// - turns each element of a slide by 90° (w.r.t. its center),
+// - set the element size back to its original size
+//	 (because, when a doc's slide size is changed, Keynote unfortunately shrinks all content so that it fits)
+// - place the element to its expected position
+ 
+function rotateSlide(original, rotated, originalDocHeight) {
+
+	function transformShape(originalShape, rotatedShape, originalDocHeight) {
+	// works for all shapes, but lines
+		
+		// turn shape
+		rotatedShape.rotation = originalShape.rotation() - 90 
+		// scale its size back
+		rotatedShape.width = originalShape.width()
+		rotatedShape.height = originalShape.height()
+		
+		// change position according to transformation: (x,y) -> (H-y,x)
+		var position = originalShape.position()
+		// (this is the position of the upper left corner,
+		//  but, once rotated, it becomes the upper *right* corner,
+		//  thus the position must be shifted to the left by the new width, i.e. the old height,
+		//  hence the "- originalShape.height()" )
+		rotatedShape.position = $.NSMakePoint(originalDocHeight - position.y - originalShape.height(), position.x)
+	}
+	
+	function transformLine(originalLine, rotatedLine, originalDocHeight) {
+	// special case: for a line, we cannot rely on width() and height() properties, or position() either
+	
+		// turn line
+		rotatedLine.rotation = originalLine.rotation() - 90 
+	
+		var startPos = originalLine.startPoint()
+		var endPos = originalLine.endPoint()
+		
+		// scale and change coords to new system
+		rotatedLine.startPoint = $.NSMakePoint(originalDocHeight - startPos.y, startPos.x)
+		rotatedLine.endPoint = $.NSMakePoint(originalDocHeight - endPos.y, endPos.x)
+		
+		// missing: a line's width is also squeezed when changing the size of the slide containing it
+		//          but there is no way to get() or set() that width from Keynote's library
+	}
+ 
+	function changeTextSize(originalShape, rotatedShape) {
+		rotatedShape.objectText.size = originalShape.objectText.size()
+ 	}
+	
+	// the elements of each type are retrieved for both original and copy docs,
+	// and the ones from the copy are transformed, based on the original
+	
+	for (i in original.shapes) {
+		changeTextSize(original.shapes[i], rotated.shapes[i]) // shapes have a textSize property, to be scaled back	
+		transformShape(original.shapes[i], rotated.shapes[i], originalDocHeight)	
+	}
+ 
+	for (i in original.textItems) {
+		changeTextSize(original.textItems[i], rotated.textItems[i]) // texts have a textSize property, to be scaled back
+		transformShape(original.textItems[i], rotated.textItems[i], originalDocHeight)
+	}
+  
+	for (i in original.images) {
+		transformShape(original.images[i], rotated.images[i], originalDocHeight)
+	}
+	
+	for (i in original.groups) {
+		transformShape(original.groups[i], rotated.groups[i], originalDocHeight)
+	}
+	
+	for (i in original.lines) {
+		transformLine(original.lines[i], rotated.lines[i], originalDocHeight)
+	}
+}
+
+//// script entry point
+ 
+Keynote = Application("Keynote")
+ 
+var app = Application.currentApplication()
+app.includeStandardAdditions = true
+ 
+function openDocuments(docs) {
+
+	// open the doc that was dropped on this application
+	var originalDocPath = docs[0]
+	var originalDoc = Keynote.open(originalDocPath)
+
+	// save a copy named "<your filename> rotated.key" in same folder
+	var originalDocPathString = originalDocPath.toString()
+	var rotatedDocPath = Path(originalDocPathString.substr(0, originalDocPathString.length-4) + " rotated.key")
+
+	Keynote.save(originalDoc, {in:rotatedDocPath})
+
+	// rotate the copy and save the changes
+	var rotatedDoc = Keynote.open(rotatedDocPath) 
+	rotateDocument(originalDoc, rotatedDoc)
+
+	Keynote.save(rotatedDoc)
+
+	app.displayNotification(originalDocPath.toString() + " rotated into " + rotatedDocPath.toString())
+}
