@@ -19,17 +19,17 @@ function rotateDocument(original, rotated) {
 	
 	// rotate each slide
 	for (j in original.slides) {
-		rotateSlide(original.slides[j], rotated.slides[j], original.width())
+		rotateContainer(original.slides[j], rotated.slides[j], original.width())
 	}
 }
 
-// rotateSlide:
-// - turns each element of a slide by 90° (w.r.t. its center),
+// rotateContainer:
+// - turns each element of a container by 90° (w.r.t. its center),
 // - set the element size back to its original size
-//	 (because, when a doc's slide size is changed, Keynote unfortunately shrinks all content so that it fits)
+//	 (because, when a doc's container size is changed, Keynote unfortunately shrinks all content so that it fits)
 // - place the element to its expected position
  
-function rotateSlide(original, rotated, originalDocWidth) {
+function rotateContainer(original, rotated, originalDocWidth) {
 
 	function transformShape(originalShape, rotatedShape, originalDocWidth) {
 	// works for all shapes, but lines
@@ -87,12 +87,16 @@ function rotateSlide(original, rotated, originalDocWidth) {
 		transformShape(original.images[i], rotated.images[i], originalDocWidth)
 	}
 	
-	for (i in original.groups) {
-		transformShape(original.groups[i], rotated.groups[i], originalDocWidth)
-	}
-	
 	for (i in original.lines) {
 		transformLine(original.lines[i], rotated.lines[i], originalDocWidth)
+	}
+	
+	// groups are actually containers (just as slides), so we'll have to recursively
+	// rotate all subcontainers, *including* all of their containing elements in order
+	// to rotate and fix all grouped elements
+	
+	for (i in original.groups) {
+		rotateContainer(original.groups[i], rotated.groups[i], originalDocWidth)
 	}
 }
 
